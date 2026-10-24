@@ -1,44 +1,46 @@
-using LearnHub.Api.Data;
+using LearnHub.Api.Services;
 
 namespace LearnHub.Api.Endpoints;
+
+public record LessonRequest(string? Title, int DurationMinutes, string? Content);
+
+public record CourseRequest(
+    string? Title, string? ShortDescription, string? Category,
+    string? Instructor, string? Level, List<LessonRequest>? Lessons, decimal Price = 0);
 
 public static class CourseEndpoints
 {
     public static void MapCourseEndpoints(this WebApplication app)
     {
-        app.MapGet("/api/courses", (InMemoryStore store) =>
-            store.Courses.Select(c => new
-            {
-                c.Id,
-                c.Title,
-                c.ShortDescription,
-                c.Category,
-                c.Instructor,
-                c.Level,
-                LessonCount = c.Lessons.Count
-            }));
+        app.MapGet("/api/courses", (string? search, CourseService courses) => courses.Search(search));
 
-        app.MapGet("/api/courses/{id:int}", (int id, InMemoryStore store) =>
+        app.MapPost("/api/courses", (CourseRequest request, CourseService courses) =>
         {
-            var course = store.Courses.FirstOrDefault(c => c.Id == id);
-            if (course is null) return Results.NotFound();
+            var draft = new CourseDraft(request.Title, request.ShortDescription, request.Category, request.Instructor,
+                request.Level, request.Lessons?.Select(l => new LessonDraft(l.Title, l.DurationMinutes, l.Content)).ToList(),
+                request.Price);
+            var (course, error) = courses.AddCourse(draft);
+            if (course is null)
+                return error == "A course with this title already exists."
+                    ? Results.Conflict(new { error })
+                    : Results.BadRequest(new { error });
 
-            return Results.Ok(new
+            return Results.Created($"/api/courses/{course.Id}", new
             {
                 course.Id,
                 course.Title,
                 course.ShortDescription,
                 course.Category,
-                course.Instructor,
+                Instructor = course.Instructor.FullName,
                 course.Level,
-                Lessons = course.Lessons.Select(l => new
-                {
-                    l.Id,
-                    l.Title,
-                    l.DurationMinutes,
-                    l.Content
-                })
+                LessonCount = course.Lessons.Count
             });
+        });
+
+        app.MapGet("/api/courses/{id:int}", (int id, CourseService courses) =>
+        {
+            var course = courses.Get(id);
+            return course is null ? Results.NotFound() : Results.Ok(course);
         });
     }
 }

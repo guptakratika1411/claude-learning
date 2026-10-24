@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "learnhub": {
+      "command": "node",
+      "args": ["--env-file=.env", "mcp-server/dist/index.js"],
+      "env": {
+        "LEARNHUB_DB_HOST": "127.0.0.1",
+        "LEARNHUB_DB_PORT": "3306",
+        "LEARNHUB_DB_USER": "root",
+        "LEARNHUB_DB_NAME": "learnhub"
+      }
+    }
+  }
+}

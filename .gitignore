@@ -7,3 +7,4 @@ dist/
 *.user
 .DS_Store
 CLAUDE.local.md
+.env
